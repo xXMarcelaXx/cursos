@@ -24,7 +24,8 @@ class ClienteController extends Controller
         try {
             $clientes = DB::table('cursos')
                 ->join('clientes', 'cursos.id', '=', 'clientes.curso_id')
-                ->select('clientes.*', 'cursos.nombre as curso', 'cursos.id as id_curso')
+                ->select('clientes.*', 'cursos.nombre as curso')
+                ->orderBy('clientes.id', 'desc')
                 ->get();
             
             return response()->json([
@@ -51,21 +52,25 @@ class ClienteController extends Controller
                 'curso_id' => 'required'
             ]);
             if ($validacion->fails()) {
-                return redirect('clientes')
-                    ->withErrors($validacion)
-                    ->withInput();
+                return response()->json([
+                    'mensaje' => 'Error de validación',
+                    'errors' => $validacion->errors(),
+                    'success' => false
+                ], 400);
             }
 
             $cliente = new Cliente();
             $cliente->nombre = $request->input('nombre');
-            $cliente->edad = $request->input('edad');
             $cliente->telefono = $request->input('telefono');
             $cliente->correo = $request->input('correo');
             $cliente->curso_id = $request->input('curso_id');
             $cliente->save();
 
 
-            return redirect('/clientes')->with(['msg' => "operacion realizada"]);
+            return response()->json([
+                'mensaje' => 'Cliente creado correctamente',
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
@@ -81,26 +86,24 @@ class ClienteController extends Controller
         try {
             $cliente = Cliente::find($id);
             if ($cliente === null) {
-                return abort(403);
+                return response()->json([
+                    'mensaje' => 'Cliente no encontrado',
+                    'success' => false
+                ], 403);
             }
             $cliente->delete();
 
-            return redirect('/clientes')->with(['msg' => "operacion realizada"]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('ClientesController@delete (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@delete (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Cliente eliminado correctamente',
+                'success' => true
+            ], 200);
+
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@delete (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -111,28 +114,19 @@ class ClienteController extends Controller
             if ($clientes === null) {
                 return abort(403);
             }
-            $curso = Curso::all();
-            if ($curso === null) {
-                return abort(403);
-            }
-            $user = Auth::user();
 
-            return view('clientes.clientesUpdate', ['clientes' => $clientes, 'cursos' => $curso, 'user' => $user]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('ClientesController@show (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@show (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Cliente encontrado',
+                'data' => $clientes,
+                'success' => true
+            ], 200);
+
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@show (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -141,43 +135,39 @@ class ClienteController extends Controller
         try {
             $validacion = Validator::make($request->all(), [
                 'nombre'  => 'required',
-                'edad'    => 'required|integer',
                 'telefono' => 'required|integer',
-                'correo'  => 'required|email',
+                'correo'  => 'required',
                 'curso_id' => 'required'
             ]);
+
             if ($validacion->fails()) {
-                return redirect('putCliente')
-                    ->withErrors($validacion)
-                    ->withInput();
+                return response()->json([
+                    'mensaje' => 'Error de validación',
+                    'errors' => $validacion->errors(),
+                    'success' => false
+                ], 400);
             }
 
 
             $cliente = Cliente::find($id);
             $cliente->nombre = $request->input('nombre');
-            $cliente->edad = $request->input('edad');
             $cliente->telefono = $request->input('telefono');
             $cliente->correo = $request->input('correo');
             $cliente->curso_id = $request->input('curso_id');
             $cliente->save();
 
 
-            return redirect('/clientes')->with(['msg' => "operacion realizada"]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('ClientesController@put (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@put (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Cliente actualizado correctamente',
+                'success' => true
+            ], 200);
+
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('ClientesController@put (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 }

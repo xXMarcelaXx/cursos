@@ -20,24 +20,18 @@ class CursoController extends Controller
     {
         try {
 
-            $user = Auth::user();
-            return view('cursos.cursos')->with(['cursos' => Curso::all(), 'user' => $user]);
+            return response()->json([
+                'mensaje' => 'Cursos encontrados',
+                'data' => Curso::all(),
+                'success' => true
+            ], 200);
 
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('CursoController@verCursos (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('CursoController@verCursos (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('CursoController@verCursos (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -46,51 +40,59 @@ class CursoController extends Controller
         try {
 
             $request->validate([
-                'nombre' => 'required'
+                'nombre' => 'required',
+                'descripcion' => 'required'
             ]);
 
             $curso = new Curso();
             $curso->nombre = $request->input('nombre');
+            $curso->descripcion = $request->input('descripcion');
             $curso->save();
-            return redirect('/verCursos')->with(['msg' => "operacion realizada"]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('CursoController@post (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('CursoController@post (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Curso creado correctamente',
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('CursoController@post (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
     public function show($id)
     {
         $cursos = Curso::find($id);
-        $user = Auth::user();
-        return view('cursos.cursosUpdate', compact('cursos'))->with(['user' => $user]);
+        return response()->json([
+            'mensaje' => 'Curso encontrado',
+            'data' => $cursos,
+            'success' => true
+        ], 200);
     }
 
     public function put(Request $request, $id)
     {
         $validacion = $request->validate([
             'nombre' => 'required',
+            'descripcion' => 'required'
         ]);
 
         if (!$validacion) {
-            return redirect('/putCursos');
+            return response()->json([
+                'mensaje' => 'Error de validación',
+                'success' => false
+            ], 400);
+
         } else {
             $curso = Curso::find($id);
             $curso->nombre = $request->input('nombre');
+            $curso->descripcion = $request->input('descripcion');
             $curso->save();
-            return redirect('/verCursos');
+            return response()->json([
+                'mensaje' => 'Curso actualizado correctamente',
+                'success' => true
+            ], 200);
         }
     }
 
@@ -99,7 +101,10 @@ class CursoController extends Controller
         $curso = Curso::find($id);
         $curso->delete();
 
-        return redirect('/verCursos')->with(['msg' => "operacion realizada"]);
+        return response()->json([
+            'mensaje' => 'Curso eliminado correctamente',
+            'success' => true
+        ], 200);
     }
 
     /*CLIENTE CURSO */
@@ -108,15 +113,15 @@ class CursoController extends Controller
     {
         $clientes = DB::table('cursos')
             ->join('clientes', 'cursos.id', '=', 'clientes.curso_id')
-            ->select('clientes.*', 'cursos.nombre as curso', 'cursos.id as id_curso')
+            ->select('clientes.*', 'cursos.nombre as curso')
             ->where('cursos.id', '=', $id)
             ->get();
-        $curso = DB::table('cursos')
-            ->select('cursos.*')
-            ->where('cursos.id', '=', $id)
-            ->get();
-        $user = Auth::user();
-        return view('cursos.verClientes', ['clientes' => $clientes, 'curso' => $curso, 'user' => $user]);
+
+        return response()->json([
+            'mensaje' => 'Clientes encontrados',
+            'data' => $clientes,
+            'success' => true
+        ], 200);
     }
 
     public function deleteClienteCurso($id)

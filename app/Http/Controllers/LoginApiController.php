@@ -24,7 +24,7 @@ class LoginApiController extends Controller
     {
         //Validacion 
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'correo' => 'required',
             'password' => 'required',
         ]);
 
@@ -37,7 +37,7 @@ class LoginApiController extends Controller
         }
 
         //Validar credenciales
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('correo', $request->correo)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
@@ -46,18 +46,8 @@ class LoginApiController extends Controller
             ], 401);
         }
 
-        //Regresar si el usuario no es admin    
-        if (!$user->hasRole('admin')) {
-            return response()->json([
-                'mensaje' => 'Acceso denegado',
-                'success' => false
-            ], 401);
-        }
-
         return response()->json([
             'mensaje' => 'logeado',
-            'user' => $user,
-            'token' => $user->createToken('token')->plainTextToken,
             'success' => true
         ], 200);
     }

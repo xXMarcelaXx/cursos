@@ -12,6 +12,7 @@ use PDOException;
 use Exception;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
@@ -19,31 +20,52 @@ class UserController extends Controller
     public function users()
     {
         try {
-            
-            $users = DB::table('users')
-            ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-            ->select('users.*', 'roles.name as rol')
-            //->where('roles.name', '!=', 'admin')
-            ->get();
-            $user = Auth::user();
-            return view('users.users', ['users' => $users,'user' => $user]);
 
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('UserController@users (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@users (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            $users = DB::table('users')
+                ->get();
+
+            return response()->json([
+                'data' => $users,
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@users (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
+        }
+    }
+
+    public function post(Request $request)
+    {
+        try {
+
+            //Validaciones
+            $request->validate([
+                'nombre' => 'required',
+                'correo' => 'required',
+                'password' => 'required',
+            ]);
+
+            $user = new User();
+            $user->nombre = $request->input('nombre');
+            $user->correo = $request->input('correo');
+            $user->password = Hash::make($request->input('password'));
+
+            if ($user->save()) {
+                return response()->json([
+                    'mensaje' => 'Usuario creado correctamente',
+                    'success' => true
+                ], 200);
+            }
+
+        } catch (Exception $e) {
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -52,27 +74,27 @@ class UserController extends Controller
         try {
 
             $user = User::find($id);
+
             if ($user === null) {
-                return abort(403);
+                return response()->json([
+                    'mensaje' => 'Usuario no encontrado',
+                    'success' => false
+                ], 404);
             }
+
             $user->delete();
 
-            return redirect('/users')->with(['msg' => "operacion realizada"]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('UserController@delete (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@delete (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Usuario eliminado',
+                'success' => true
+            ], 200);
+
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@delete (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -80,32 +102,24 @@ class UserController extends Controller
     {
         try {
             $user = User::find($id);
+
             if ($user === null) {
-                return abort(403);
-            }
-            $roles = DB::table('roles')
-            //->where('roles.name', '!=', 'admin')
-            ->get();
-            if ($roles === null) {
-                return abort(403);
+                return response()->json([
+                    'mensaje' => 'Usuario no encontrado',
+                    'success' => false
+                ], 404);
             }
 
-            return view('users.userUpdate', ['user' => $user, 'roles' => $roles]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('UserController@show (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@show (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'data' => $user,
+                'success' => true
+            ], 200);
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@show (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 
@@ -115,55 +129,36 @@ class UserController extends Controller
 
             $user = User::find($id);
 
-            if ($user->email == $request->input('email')) {
-                $validacion = Validator::make($request->all(), [
-                    'name' => ['required', 'string', 'regex:/^[A-Za-z\s]{4,50}$/'],
-                    'telefono' => 'required|integer',
-                    'rol' => 'required'
-                ]);
-                if ($validacion->fails()) {
-                    return Redirect::back()
-                        ->withErrors($validacion)
-                        ->withInput();
-                }
-            } else {
-                $validacion = Validator::make($request->all(), [
-                    'name' => ['required', 'string', 'regex:/^[A-Za-z\s]{4,50}$/'],
-                    'email' => 'required|email|unique:users',
-                    'telefono' => 'required|integer',
-                    'rol' => 'required'
-                ]);
-                if ($validacion->fails()) {
-                    return Redirect::back()
-                        ->withErrors($validacion)
-                        ->withInput();
-                }
+            $validacion = Validator::make($request->all(), [
+                'nombre' => 'required',
+                'correo' => 'required'
+            ]);
+
+            if ($validacion->fails()) {
+                return response()->json([
+                    'mensaje' => 'Datos invalidos',
+                    'errors' => $validacion->errors(),
+                    'success' => false
+                ], 400);
             }
 
-            $user->name = $request->input('name');
-            $user->email = $request->input('email');
-            $user->telefono = $request->input('telefono');
-            $user->syncRoles([$request->input('rol')]);
+
+            $user->nombre = $request->input('nombre');
+            $user->correo = $request->input('correo');
 
             $user->save();
 
+            return response()->json([
+                'mensaje' => 'Usuario actualizado',
+                'success' => true
+            ], 200);
 
-            return redirect('/users')->with(['msg' => "operacion realizada"]);
-        } catch (QueryException $e) {
-            // Manejo de la excepción de consulta SQL
-            Log::channel('slackerror')->error('UserController@put (appuca) Error consulta SQL', [$e->getMessage()]);
-            Log::error('Error de consulta SQL: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
-        } catch (PDOException $e) {
-            // Manejo de la excepción de PDO
-            Log::error('Error de PDO: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@put (appuca) Error PDO', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
         } catch (Exception $e) {
-            // Manejo de cualquier otra excepción no prevista
-            Log::error('Excepción no controlada: ' . $e->getMessage());
-            Log::channel('slackerror')->error('UserController@put (appuca) Excepción no controlada', [$e->getMessage()]);
-            return Redirect::back()->withErrors(['errors' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.']);
+            return response()->json([
+                'mensaje' => 'Error interno del servidor. Por favor, inténtelo de nuevo más tarde.',
+                'errors' => $e->getMessage(),
+                'success' => false
+            ], 500);
         }
     }
 }

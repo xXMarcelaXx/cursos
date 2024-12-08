@@ -23,10 +23,23 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/login', [LoginApiController::class, 'login']);
-Route::middleware('auth:sanctum')->get('/logout', [LoginApiController::class, 'logout']);
+
+Route::post('/usuarios', [UserController::class, 'post']);
+Route::get('/usuarios', [UserController::class, 'users']);
+Route::delete('/usuarios/{id}', [UserController::class, 'delete']);
+Route::get('/usuarios/{id}', [UserController::class, 'show']);
+Route::put('/usuarios/{id}', [UserController::class, 'put']);
+
 
 Route::get('/cursos', [CursoController::class, 'verCursos']);
+Route::get('/cursos/{id}', [CursoController::class, 'show']);
+Route::get('/cursos/clientes/{id}', [CursoController::class, 'show2']);
 Route::post('/cursos', [CursoController::class, 'post']);
+Route::delete('/cursos/{id}', [CursoController::class, 'delete']);
+Route::put('/cursos/{id}', [CursoController::class, 'put']);
 
 Route::get('/clientes', [ClienteController::class, 'clientes']);
+Route::get('/clientes/{id}', [ClienteController::class, 'show']);
 Route::post('/clientes', [ClienteController::class, 'post']);
+Route::delete('/clientes/{id}', [ClienteController::class, 'delete']);
+Route::put('/clientes/{id}', [ClienteController::class, 'put']);
